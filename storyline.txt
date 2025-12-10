@@ -1,0 +1,150 @@
+DROP DATABASE IF EXISTS storyline;
+CREATE DATABASE storyline;
+USE storyline;
+
+-- Users Table
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    profile_picture VARCHAR(255),
+    cover_picture VARCHAR(255),
+    bio TEXT,
+    total_coins BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    reset_token VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE followers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    follower_id INT,  -- Account1 (the one following)
+    following_id INT, -- Account2 (the one being followed)
+    UNIQUE (follower_id, following_id),  -- Prevent duplicate follows
+    FOREIGN KEY (follower_id) REFERENCES users(id),
+    FOREIGN KEY (following_id) REFERENCES users(id)
+);
+
+-- Stories Table
+CREATE TABLE stories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    content LONGTEXT,
+    cover_image VARCHAR(255),
+    category VARCHAR(100),
+    status ENUM('draft', 'published') DEFAULT 'draft',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Add index for faster lookups
+CREATE INDEX idx_stories_user_id ON stories(user_id);
+
+-- Categories Table
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Favorites Table
+CREATE TABLE favorites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    story_id INT NOT NULL,
+    favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+);
+
+-- Indexing favorites for optimized queries
+CREATE INDEX idx_favorites_user_id_story_id ON favorites(user_id, story_id);
+
+
+CREATE TABLE likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    story_id INT NOT NULL,
+    liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
+    UNIQUE(user_id, story_id) -- Ensures a user can like only once
+);
+
+CREATE TABLE comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    story_id INT NOT NULL,
+    user_id INT NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Downloads Table to track user's downloads
+CREATE TABLE downloads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    story_id INT NOT NULL,
+    downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
+    UNIQUE(user_id, story_id) -- Ensure that a user can download the same book only once
+);
+
+CREATE TABLE views (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    story_id INT NOT NULL,
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
+    UNIQUE(user_id, story_id) -- Ensure a user views the story only once
+);
+-- Story Parts Table
+CREATE TABLE parts (
+     id INT AUTO_INCREMENT PRIMARY KEY,
+     story_id INT NOT NULL,
+     title VARCHAR(255) NOT NULL,
+     content LONGTEXT,
+     status ENUM('draft', 'published') DEFAULT 'draft',
+     payment ENUM('free', 'paid') DEFAULT 'free',
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+);
+
+-- Watch video to get coins
+CREATE TABLE user_clicks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    click_count INT DEFAULT 0,
+    last_reset DATE,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Purchase part with coins
+CREATE TABLE purchases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    part_id INT NOT NULL,
+    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE notifications (
+   id int(11) NOT NULL AUTO_INCREMENT,
+   user_id int(11) NOT NULL,
+   message varchar(255) NOT NULL,
+   story_id int(11) NOT NULL,
+   liked_by int(11) NOT NULL,
+   created_at timestamp NOT NULL DEFAULT current_timestamp(),
+   type enum('like','comment','follow') NOT NULL,
+   is_read tinyint(1) DEFAULT 0,
+   PRIMARY KEY (id)
+ ) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
